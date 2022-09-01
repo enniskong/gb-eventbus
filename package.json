@@ -1,0 +1,24 @@
+{
+  "name": "link-server",
+  "version": "1.0.0",
+  "description": "测试rabbit Rpc",
+  "main": "index.js",
+  "scripts": {
+    "start:client2": "npx tsc & node src/client2.js",
+    "start:client1": "npx tsc & node src/client1.js",
+    "start": "npx tsc & node src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "amqplib": "^0.10.2",
+    "koa": "^2.13.4"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.8.2",
+    "@types/koa": "^2.13.5",
+    "typescript": "^4.8.2"
+  }
+}
