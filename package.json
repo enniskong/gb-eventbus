@@ -1,16 +1,16 @@
 {
   "name": "gb-eventbus",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "",
   "main": "./lib/index.js",
   "scripts": {
-    "publish": "",
     "clean": "rimraf lib",
     "build": "npm run clean && tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "repository": "",
-  "keywords": [],
+  "repository": "https://github.com/enniskong/gb-eventbus",
+  "homepage": "https://github.com/enniskong/gb-eventbus#README",
+  "keywords": ["eventbus", "rabbit"],
   "author": "ennis.kong@hotmail.com",
   "license": "ISC",
   "dependencies": {
