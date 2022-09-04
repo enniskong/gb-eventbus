@@ -1,10 +1,9 @@
-import amqplib, { Channel, Connection } from 'amqplib';
+import amqplib, { Channel, Options } from 'amqplib';
 import { EventEmitter as InternalEventEmitter } from 'events';
+import { CloudEventV1, CloudEvent } from 'cloudevents'
 
-const RabbitMQ_URL = 'amqp://guest:guest@127.0.0.1:5672';
-const MASTER_EXCHANGE = 'amp.direct.eventbus';
-const FANOUT_EXCHANGE = 'amp.fanout.eventbus';
-
+const EXCHANGE_NAME = 'direct.eventbus';
+const FANOUT_ROUTE_KEY = '____fanout$$#__';
 
 interface Event {
   type: string;
@@ -12,6 +11,8 @@ interface Event {
   subject?: string;
   data: any;
 }
+
+type Options = string | Options.Connect;
 
 class EventEmitter {
   private readonly ee: InternalEventEmitter;
@@ -21,13 +22,19 @@ class EventEmitter {
     this.ee = new InternalEventEmitter();
   }
   
-  public static async getEventEmitter(): Promise<EventEmitter> {
+  /**
+   * 
+   * @param urlOrOption 
+   * @returns 
+   */
+  public static async getEventEmitter(urlOrOption: Options): Promise<EventEmitter> {
     if (this._instance == null) {
-      const connection = await amqplib.connect(RabbitMQ_URL);
+      const connection = await amqplib.connect(urlOrOption);
       const channel = await connection.createChannel();
-      await channel.assertExchange(MASTER_EXCHANGE, 'direct');
-      await channel.assertExchange(FANOUT_EXCHANGE, 'fanout');
-      await channel.bindExchange(FANOUT_EXCHANGE, MASTER_EXCHANGE, '');                                                                                                                    
+      await channel.assertExchange(EXCHANGE_NAME, 'direct', {
+        durable: true,
+        autoDelete: true
+      });
       this._instance = new EventEmitter(channel);
     }
     return this._instance;
@@ -38,37 +45,92 @@ class EventEmitter {
    * @param event 
    * @param listener 
    */
-  public async on(event: string | Event, listener: (...args: any[]) => void, ) {
-    let queue = '';
-
+  public async on(event: string | Event, listener: (...args: any[]) => void, exchangeType = "direct") {
+    let eventName = '';
     if (typeof event === 'string') {
       this.ee.on(event, listener);
-      queue = event;
+      eventName = event;
     } else if (event instanceof EventEmitter) {
       this.ee.on(event.type, listener);
-      queue = event.type
+      eventName = event.type;
     } else {
-      throw new Error('Invalid Event name')
+      throw new Error('Invalid Event name');
     }
 
+    if (exchangeType == 'direct') {
+      // 单播
+      await this.channel.assertQueue(eventName , {
+        autoDelete: true
+      });
+      await this.channel.bindQueue(eventName, EXCHANGE_NAME, eventName);
+    } else if (exchangeType == 'fanout') {
+      // 多播
+      const { exchange } = await this.channel.assertExchange(`fanout.eventbus.${eventName}`, 'fanout', {
+        durable: true,
+        autoDelete: true
+      })
+      // 随机生成队列名称
+      const { queue: autoGenQueueName } = await this.channel.assertQueue('', {
+        autoDelete: true
+      });
+      await this.channel.bindQueue(autoGenQueueName, exchange, '');
+      await this.channel.bindExchange(exchange, EXCHANGE_NAME, FANOUT_ROUTE_KEY + "|" + eventName);
+      eventName = autoGenQueueName;
+      this.ee.on(eventName, listener);
+      await this.channel.bindQueue(eventName, exchange, eventName);
+    }
 
-    await this.channel.assertQueue(queue);
-    await this.channel.bindQueue(queue, MASTER_EXCHANGE, queue);
-
-    this.channel.consume(queue, msg => {
+    // 订阅
+    this.channel.consume(eventName, msg => {
       if (msg != null) {
-        this.ee.emit(queue, msg.content.toString());
+        this.ee.emit(eventName, msg.content.toString());
         this.channel.ack(msg);
       }
     });
   }
 
-  public async emit(event: string | Event, data: any) {
+  public async addEventListener(event: string | Event, listener: (...args: any[]) => void, exchangeType = "direct") {
+    this.on(event, listener, exchangeType);
+  }
+
+  /**
+   * 
+   * @param event 
+   * @param data 
+   * @param exchangeType 
+   */
+  public async emit<T>(event: string | Event, data: T, exchangeType = "direct") {
     if (typeof event === 'string') {
-      await this.channel.assertQueue(event);
-      await this.channel.bindQueue(event, MASTER_EXCHANGE, event);
-      this.channel.publish(MASTER_EXCHANGE, event, Buffer.from(JSON.stringify(data)))
+      // 单播可以防止丢数据
+      if (exchangeType == 'direct') {
+        await this.channel.assertQueue(event , {
+          autoDelete: true
+        });
+        await this.channel.bindQueue(event, EXCHANGE_NAME, event);
+      }
+      if (exchangeType == 'direct') {
+        this.channel.publish( EXCHANGE_NAME, event, Buffer.from(JSON.stringify(this.packet(event, data))) )
+      } else if (exchangeType == 'fanout') {
+        this.channel.publish( EXCHANGE_NAME, FANOUT_ROUTE_KEY + "|" + event, Buffer.from(JSON.stringify(this.packet(event, data))) )
+      }
     }
+  }
+
+  private packet<T>(event: string | Event, data: T): CloudEventV1<T> | null {
+    let e:CloudEventV1<T>;
+    if (typeof event === 'string') {
+      e = new CloudEvent<T>({
+        type: event, 
+        source: 'unknown', 
+        data
+      })
+    } else {
+      e = new CloudEvent<T>({
+        ...event, 
+        data
+      })
+    }
+    return e
   }
 }
 
@@ -76,5 +138,6 @@ class EventEmitter {
 export default EventEmitter;
 
 export {
-  Event
+  Event,
+  Options
 }

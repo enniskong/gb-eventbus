@@ -1,24 +1,25 @@
 {
-  "name": "link-server",
+  "name": "gb-eventbus",
   "version": "1.0.0",
-  "description": "测试rabbit Rpc",
-  "main": "index.js",
+  "description": "",
+  "main": "./lib/index.js",
   "scripts": {
-    "start:client2": "npx tsc & node src/client2.js",
-    "start:client1": "npx tsc & node src/client1.js",
-    "start": "npx tsc & node src/index.js",
+    "publish": "",
+    "clean": "rimraf lib",
+    "build": "npm run clean && tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "repository": "",
   "keywords": [],
-  "author": "",
+  "author": "ennis.kong@hotmail.com",
   "license": "ISC",
   "dependencies": {
     "amqplib": "^0.10.2",
-    "koa": "^2.13.4"
+    "cloudevents": "^6.0.2"
   },
   "devDependencies": {
     "@types/amqplib": "^0.8.2",
-    "@types/koa": "^2.13.5",
+    "rimraf": "^3.0.2",
     "typescript": "^4.8.2"
   }
 }

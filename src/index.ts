@@ -1,6 +1,9 @@
-import App from "./server";
+import EventEmitter, { Event, Options } from "./EventEmitter";
 
 
-App.listen(4000, () => {
-  console.log('Starting ....')
-})
+export {
+  EventEmitter,
+  Event, 
+  Options
+}
+
