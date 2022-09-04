@@ -49,7 +49,7 @@ class EventEmitter {
     if (typeof event === 'string') {
       this.ee.on(event, listener);
       eventName = event;
-    } else if (event instanceof Event) {
+    } else if (event.type != null) {
       this.ee.on(event.type, listener);
       eventName = event.type;
     } else {
@@ -99,19 +99,24 @@ class EventEmitter {
    * @param exchangeType 
    */
   public async emit<T>(event: string | Event, data: T, exchangeType = "direct") {
+    let queue = ''
     if (typeof event === 'string') {
-      // 单播可以防止丢数据
-      if (exchangeType == 'direct') {
-        await this.channel.assertQueue(event , {
-          autoDelete: true
-        });
-        await this.channel.bindQueue(event, EXCHANGE_NAME, event);
-      }
-      if (exchangeType == 'direct') {
-        this.channel.publish( EXCHANGE_NAME, event, Buffer.from(JSON.stringify(this.packet(event, data))) )
-      } else if (exchangeType == 'fanout') {
-        this.channel.publish( EXCHANGE_NAME, FANOUT_ROUTE_KEY + "|" + event, Buffer.from(JSON.stringify(this.packet(event, data))) )
-      }
+      queue = event;
+    } else {
+      queue = event.type;
+    }
+
+    // 单播可以防止丢数据
+    if (exchangeType == 'direct') {
+      await this.channel.assertQueue(queue , {
+        autoDelete: true
+      });
+      await this.channel.bindQueue(queue, EXCHANGE_NAME, queue);
+    }
+    if (exchangeType == 'direct') {
+      this.channel.publish( EXCHANGE_NAME, queue, Buffer.from(JSON.stringify(this.packet(event, data))) )
+    } else if (exchangeType == 'fanout') {
+      this.channel.publish( EXCHANGE_NAME, FANOUT_ROUTE_KEY + "|" + event, Buffer.from(JSON.stringify(this.packet(event, data))) )
     }
   }
 
