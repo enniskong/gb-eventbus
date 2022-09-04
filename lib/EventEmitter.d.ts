@@ -3,7 +3,6 @@ interface Event {
     type: string;
     source: string;
     subject?: string;
-    data: any;
 }
 declare type Options = string | Options.Connect;
 declare class EventEmitter {
@@ -22,15 +21,15 @@ declare class EventEmitter {
      * @param event
      * @param listener
      */
-    on(event: string | Omit<Event, 'data'>, listener: (...args: any[]) => void, exchangeType?: string): Promise<void>;
-    addEventListener(event: string | Omit<Event, 'data'>, listener: (...args: any[]) => void, exchangeType?: string): Promise<void>;
+    on(event: string | Event, listener: (...args: any[]) => void, exchangeType?: string): Promise<void>;
+    addEventListener(event: string | Event, listener: (...args: any[]) => void, exchangeType?: string): Promise<void>;
     /**
      *
      * @param event
      * @param data
      * @param exchangeType
      */
-    emit<T>(event: string | Omit<Event, 'data'>, data: T, exchangeType?: string): Promise<void>;
+    emit<T>(event: string | Event, data: T, exchangeType?: string): Promise<void>;
     private packet;
 }
 export default EventEmitter;

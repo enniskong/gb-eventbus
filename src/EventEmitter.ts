@@ -9,7 +9,6 @@ interface Event {
   type: string;
   source: string;
   subject?: string;
-  data: any;
 }
 
 type Options = string | Options.Connect;
@@ -45,12 +44,12 @@ class EventEmitter {
    * @param event 
    * @param listener 
    */
-  public async on(event: string | Omit<Event, 'data'>, listener: (...args: any[]) => void, exchangeType = "direct") {
+  public async on(event: string | Event, listener: (...args: any[]) => void, exchangeType = "direct") {
     let eventName = '';
     if (typeof event === 'string') {
       this.ee.on(event, listener);
       eventName = event;
-    } else if (event instanceof EventEmitter) {
+    } else if (event instanceof Event) {
       this.ee.on(event.type, listener);
       eventName = event.type;
     } else {
@@ -89,7 +88,7 @@ class EventEmitter {
     });
   }
 
-  public async addEventListener(event: string | Omit<Event, 'data'>, listener: (...args: any[]) => void, exchangeType = "direct") {
+  public async addEventListener(event: string | Event, listener: (...args: any[]) => void, exchangeType = "direct") {
     this.on(event, listener, exchangeType);
   }
 
@@ -99,7 +98,7 @@ class EventEmitter {
    * @param data 
    * @param exchangeType 
    */
-  public async emit<T>(event: string | Omit<Event, 'data'>, data: T, exchangeType = "direct") {
+  public async emit<T>(event: string | Event, data: T, exchangeType = "direct") {
     if (typeof event === 'string') {
       // 单播可以防止丢数据
       if (exchangeType == 'direct') {
@@ -116,7 +115,7 @@ class EventEmitter {
     }
   }
 
-  private packet<T>(event: string | Omit<Event, 'data'>, data: T): CloudEventV1<T> | null {
+  private packet<T>(event: string | Event, data: T): CloudEventV1<T> | null {
     let e:CloudEventV1<T>;
     if (typeof event === 'string') {
       e = new CloudEvent<T>({
